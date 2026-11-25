@@ -2,6 +2,8 @@
 
 上傳一張**自己的照片**與一張**穿搭參考圖**，即可將穿搭自然合成到你的照片上。
 
+**線上網頁版（Live Demo）**：https://asdw4848.github.io/outfit-tryon/
+
 本專案**同時支援兩種部署／運行方式**，零外部 npm 相依：
 - **GitHub Pages 純前端靜態部署**：上傳到 GitHub 後啟用 Pages，免後端伺服器即可直接在瀏覽器使用（支援離線手動去背疊圖，及由瀏覽器直連 Gemini API 進行 AI 換裝）。
 - **本機 Node.js 伺服器**：可透過 `.env` 設定 `GEMINI_API_KEY`，並將 AI 合成結果自動儲存至本機 `outputs/` 資料夾。
@@ -34,7 +36,7 @@
    git push -u origin main
    ```
 3. 到 GitHub Repository 的 **Settings → Pages → Build and deployment → Source**，選擇 **GitHub Actions**。
-4. 等待 `Deploy to GitHub Pages` workflow 執行完成，即可透過 `https://<你的帳號>.github.io/<你的Repo>/` 直接開啟使用！
+4. 等待 `Deploy to GitHub Pages` workflow 執行完成，即可透過 `https://<你的帳號>.github.io/<你的Repo>/`（本專案為 [https://asdw4848.github.io/outfit-tryon/](https://asdw4848.github.io/outfit-tryon/)）直接開啟使用！
 
 > **安全性說明**：在 GitHub Pages 靜態模式下，使用者輸入的 Gemini API Key 僅保存於自己瀏覽器的 `localStorage` 中，並直接發送給 Google Gemini API，不會寫入任何後端或倉庫。
 
