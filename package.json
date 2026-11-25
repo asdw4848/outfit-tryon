@@ -1,0 +1,13 @@
+{
+  "name": "virtual-tryon-studio",
+  "version": "1.0.0",
+  "description": "AI Virtual Try-On & Outfit Composite Studio using Gemini Image API and local canvas compositing",
+  "type": "module",
+  "scripts": {
+    "start": "node server.mjs",
+    "test": "node --test tests/server.test.mjs"
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  }
+}

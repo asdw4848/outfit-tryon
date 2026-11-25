@@ -1,0 +1,289 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AI 虛擬試穿工作室｜Virtual Try-On Studio</title>
+  <link rel="stylesheet" href="./styles.css" />
+</head>
+<body>
+  <div class="app-shell">
+    <header class="topbar">
+      <div class="brand">
+        <div class="brand-badge">VTO</div>
+        <div>
+          <h1>AI 虛擬試穿工作室</h1>
+          <p>上傳個人照片與穿搭參考圖，一鍵合成自然試穿效果</p>
+        </div>
+      </div>
+      <div class="topbar-actions">
+        <button id="loadDemoBtn" class="btn btn-ghost" type="button">載入示範圖片</button>
+        <button id="toggleApiPanelBtn" class="btn btn-outline" type="button">
+          <span id="apiKeyStatusDot" class="status-dot"></span>
+          AI 金鑰設定
+        </button>
+      </div>
+    </header>
+
+    <section id="apiSettingsPanel" class="card api-panel hidden">
+      <div class="api-panel-grid">
+        <div>
+          <label class="field-label" for="apiKeyInput">Google Gemini API Key</label>
+          <div class="input-row">
+            <input
+              id="apiKeyInput"
+              type="password"
+              placeholder="貼上 AIza...（若已於 .env 設定則可留空）"
+              autocomplete="off"
+            />
+            <button id="toggleKeyVisibilityBtn" class="btn btn-ghost" type="button">顯示</button>
+          </div>
+          <p id="serverKeyHint" class="hint-text">金鑰僅在本地瀏覽器與本機伺服器間使用，不會上傳至第三方儲存。</p>
+        </div>
+        <div>
+          <label class="field-label" for="modelSelect">AI 生圖模型</label>
+          <select id="modelSelect"></select>
+          <label class="checkbox-row">
+            <input id="rememberKeyCheckbox" type="checkbox" checked />
+            <span>記住於此瀏覽器 (localStorage)</span>
+          </label>
+        </div>
+      </div>
+    </section>
+
+    <main class="workspace-grid">
+      <!-- Left: Inputs & Controls -->
+      <section class="left-column">
+        <div class="upload-pair">
+          <!-- Person Photo -->
+          <div class="card upload-card">
+            <div class="card-header">
+              <h2>1. 自己的照片</h2>
+              <button id="clearPersonBtn" class="btn-link hidden" type="button">清除</button>
+            </div>
+            <label id="personDropzone" class="dropzone" for="personInput">
+              <input id="personInput" type="file" accept="image/jpeg,image/png,image/webp" hidden />
+              <div id="personPlaceholder" class="drop-placeholder">
+                <div class="drop-icon">🧍</div>
+                <strong>點擊或拖曳上傳人像照</strong>
+                <span>建議正面、光線均勻、半身或全身照</span>
+              </div>
+              <img id="personPreview" class="preview-img hidden" alt="個人照片預覽" />
+            </label>
+            <div class="card-footer-meta">
+              <span id="personMeta">尚未選擇圖片</span>
+              <button id="pastePersonBtn" class="btn-link" type="button">從剪貼簿貼上</button>
+            </div>
+          </div>
+
+          <!-- Outfit Photo -->
+          <div class="card upload-card">
+            <div class="card-header">
+              <h2>2. 穿搭參考圖</h2>
+              <button id="clearOutfitBtn" class="btn-link hidden" type="button">清除</button>
+            </div>
+            <label id="outfitDropzone" class="dropzone" for="outfitInput">
+              <input id="outfitInput" type="file" accept="image/jpeg,image/png,image/webp" hidden />
+              <div id="outfitPlaceholder" class="drop-placeholder">
+                <div class="drop-icon">🧥</div>
+                <strong>點擊或拖曳上傳穿搭圖</strong>
+                <span>支援網拍模特圖、平拍衣服或穿搭照</span>
+              </div>
+              <img id="outfitPreview" class="preview-img hidden" alt="穿搭圖片預覽" />
+            </label>
+            <div class="card-footer-meta">
+              <span id="outfitMeta">尚未選擇圖片</span>
+              <button id="pasteOutfitBtn" class="btn-link" type="button">從剪貼簿貼上</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Mode Tabs -->
+        <div class="card controls-card">
+          <div class="mode-tabs" role="tablist">
+            <button
+              id="tabAiBtn"
+              class="mode-tab active"
+              type="button"
+              role="tab"
+              aria-selected="true"
+            >
+              ✨ AI 智慧換裝（逼真貼合）
+            </button>
+            <button
+              id="tabManualBtn"
+              class="mode-tab"
+              type="button"
+              role="tab"
+              aria-selected="false"
+            >
+              🎨 本機手動疊圖（免 API Key）
+            </button>
+          </div>
+
+          <!-- AI Mode Panel -->
+          <div id="aiModePanel" class="tab-panel">
+            <div class="form-grid">
+              <div>
+                <label class="field-label" for="targetAreaSelect">換裝部位</label>
+                <select id="targetAreaSelect">
+                  <option value="full">全身穿搭（上衣＋下身）</option>
+                  <option value="top">僅更換上衣</option>
+                  <option value="bottom">僅更換下身（褲／裙）</option>
+                  <option value="outerwear">外搭外套／大衣（疊穿）</option>
+                  <option value="dress">連身洋裝／套裝</option>
+                </select>
+              </div>
+              <div>
+                <label class="field-label" for="fitStyleSelect">版型與垂墜感</label>
+                <select id="fitStyleSelect">
+                  <option value="natural">自然貼合身形（推薦）</option>
+                  <option value="tailored">修身俐落合身</option>
+                  <option value="relaxed">寬鬆街頭 Oversize</option>
+                </select>
+              </div>
+            </div>
+
+            <label class="checkbox-row">
+              <input id="preserveBgCheckbox" type="checkbox" checked />
+              <span>嚴格保留原本照片的背景與光影</span>
+            </label>
+
+            <div>
+              <label class="field-label" for="extraNotesInput">額外調整指令（選填）</label>
+              <textarea
+                id="extraNotesInput"
+                rows="2"
+                placeholder="例如：把上衣紮進褲頭、袖子微捲、保留原本戴的眼鏡與項鍊…"
+              ></textarea>
+            </div>
+
+            <button id="runAiBtn" class="btn btn-primary btn-full" type="button">
+              ✨ 開始 AI 虛擬試穿合成
+            </button>
+          </div>
+
+          <!-- Manual Offline Studio Panel -->
+          <div id="manualModePanel" class="tab-panel hidden">
+            <p class="hint-text">
+              不需網路與 API Key，直接在瀏覽器內去背、縮放與對齊穿搭。畫布上可直接用滑鼠拖曳衣物位置！
+            </p>
+            <div class="manual-controls-grid">
+              <label class="range-field">
+                <span>縮放大小 <strong id="scaleVal">55%</strong></span>
+                <input id="manualScale" type="range" min="15" max="150" value="55" />
+              </label>
+              <label class="range-field">
+                <span>旋轉角度 <strong id="rotateVal">0°</strong></span>
+                <input id="manualRotate" type="range" min="-45" max="45" value="0" />
+              </label>
+              <label class="range-field">
+                <span>智慧去背容差 <strong id="bgTolVal">28</strong></span>
+                <input id="manualBgTol" type="range" min="0" max="90" value="28" />
+              </label>
+              <label class="range-field">
+                <span>不透明度 <strong id="opacityVal">96%</strong></span>
+                <input id="manualOpacity" type="range" min="20" max="100" value="96" />
+              </label>
+              <label class="range-field">
+                <span>衣物亮度 <strong id="brightVal">100%</strong></span>
+                <input id="manualBrightness" type="range" min="60" max="140" value="100" />
+              </label>
+              <label class="range-field">
+                <span>衣物對比 <strong id="contrastVal">100%</strong></span>
+                <input id="manualContrast" type="range" min="60" max="140" value="100" />
+              </label>
+            </div>
+
+            <div class="manual-action-row">
+              <label class="checkbox-row">
+                <input id="autoRemoveBgCheckbox" type="checkbox" checked />
+                <span>自動去除穿搭圖背景色</span>
+              </label>
+              <div class="btn-group">
+                <button id="flipOutfitBtn" class="btn btn-outline btn-sm" type="button">水平翻轉</button>
+                <button id="resetManualBtn" class="btn btn-ghost btn-sm" type="button">重設位置</button>
+              </div>
+            </div>
+
+            <button id="exportManualBtn" class="btn btn-primary btn-full" type="button">
+              💾 產生並套用本機合成結果
+            </button>
+          </div>
+        </div>
+      </section>
+
+      <!-- Right: Result & Compare -->
+      <section class="right-column">
+        <div class="card result-card">
+          <div class="card-header">
+            <h2>3. 試穿合成預覽</h2>
+            <div class="result-badges">
+              <span id="resultModeBadge" class="badge">等待合成</span>
+            </div>
+          </div>
+
+          <div id="resultViewport" class="result-viewport">
+            <div id="resultEmptyState" class="result-empty">
+              <div class="empty-icon">✨</div>
+              <strong>合成結果將顯示於此</strong>
+              <p>上傳兩張圖片後，點擊「開始 AI 虛擬試穿合成」或切換到「本機手動疊圖」即時微調。</p>
+            </div>
+
+            <!-- Interactive Manual Canvas -->
+            <canvas id="manualCanvas" class="hidden"></canvas>
+
+            <!-- AI Result / Before-After Compare -->
+            <div id="compareContainer" class="compare-container hidden">
+              <img id="compareBeforeImg" class="compare-img compare-before" alt="原始照片" />
+              <div id="compareAfterLayer" class="compare-after-layer">
+                <img id="compareAfterImg" class="compare-img compare-after" alt="試穿合成結果" />
+              </div>
+              <div id="compareDivider" class="compare-divider">
+                <div class="compare-handle">⇄</div>
+              </div>
+              <span class="compare-tag compare-tag-left">原圖</span>
+              <span class="compare-tag compare-tag-right">試穿後</span>
+            </div>
+
+            <!-- Loading Overlay -->
+            <div id="loadingOverlay" class="loading-overlay hidden">
+              <div class="spinner"></div>
+              <strong id="loadingTitle">AI 正在為您試穿搭配中…</strong>
+              <span id="loadingSub">保留五官與姿勢並自然融合布料光影，約需 10–25 秒</span>
+            </div>
+          </div>
+
+          <div id="errorBanner" class="error-banner hidden" role="alert"></div>
+          <p id="aiNoteBox" class="ai-note hidden"></p>
+
+          <div class="result-actions">
+            <button id="toggleCompareBtn" class="btn btn-outline hidden" type="button">
+              切換原圖／對比模式
+            </button>
+            <button id="reuseResultBtn" class="btn btn-outline" type="button" disabled>
+              設為個人照（繼續疊穿）
+            </button>
+            <a id="downloadResultBtn" class="btn btn-primary disabled" download="virtual-tryon.png">
+              下載合成圖片
+            </a>
+          </div>
+        </div>
+
+        <!-- History -->
+        <div class="card history-card">
+          <div class="card-header">
+            <h2>歷史合成紀錄</h2>
+            <button id="refreshHistoryBtn" class="btn-link" type="button">重新整理</button>
+          </div>
+          <div id="historyGrid" class="history-grid">
+            <p class="hint-text">尚無已儲存的 AI 合成紀錄。</p>
+          </div>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <script type="module" src="./app.js"></script>
+</body>
+</html>
